@@ -52,6 +52,7 @@ fn find_assembly(
         ("riscv32", _, _, _) => Some(("src/arch/riscv.s", true)),
         ("riscv64", _, _, _) => Some(("src/arch/riscv64.s", true)),
         ("wasm32", _, _, _) => Some(("src/arch/wasm32.o", true)),
+        ("e2k64", _, _, _) => Some(("src/arch/e2k64.S", false)),
         _ => None,
     }
 }
