@@ -57,24 +57,26 @@ fn find_assembly(
 }
 
 fn main() {
-    let arch = ::std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let env = ::std::env::var("CARGO_CFG_TARGET_ENV").unwrap();
-    let os = ::std::env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let endian = ::std::env::var("CARGO_CFG_TARGET_ENDIAN").unwrap();
+    use std::env::var;
 
-    // We are only assembling a single file and any flags in the environment probably
-    // don't apply in this case, so we don't want to use them. Unfortunately, cc
-    // doesn't provide a way to clear/ignore flags set from the environment, so
-    // we manually remove them instead
-    for key in
-        std::env::vars().filter_map(|(k, _)| if k.contains("CFLAGS") { Some(k) } else { None })
-    {
-        std::env::remove_var(key);
-    }
+    let arch = var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let env = var("CARGO_CFG_TARGET_ENV").unwrap();
+    let os = var("CARGO_CFG_TARGET_OS").unwrap();
+    let endian = var("CARGO_CFG_TARGET_ENDIAN").unwrap();
 
     let mut cfg = cc::Build::new();
+
     let msvc = cfg.get_compiler().is_like_msvc();
-    let asm = if let Some((asm, canswitch)) = find_assembly(&arch, &endian, &os, &env, msvc) {
+    // If we're targeting msvc, either via regular MS toolchain or clang-cl, we
+    // will _usually_ want to use the regular Microsoft assembler if it exists,
+    // which is done for us within cc, however it _probably_ won't exist if
+    // we're in a cross-compilation context pm a platform that can't natively
+    // run Windows executables, so in that case we instead use the the equivalent
+    // GAS assembly file instead. This logic can be removed once LLVM natively
+    // supports compiling MASM, but that is not stable yet
+    let masm = msvc && var("HOST").expect("HOST env not set").contains("windows");
+
+    let asm = if let Some((asm, canswitch)) = find_assembly(&arch, &endian, &os, &env, masm) {
         println!("cargo:rustc-cfg=asm");
         if canswitch {
             println!("cargo:rustc-cfg=switchable_stack")
