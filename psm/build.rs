@@ -39,6 +39,7 @@ fn find_assembly(
         ("arm", _, _, _) => Some(("src/arch/arm_aapcs.s", true)),
         ("aarch64", _, _, _) => Some(("src/arch/aarch_aapcs64.s", true)),
         ("powerpc", _, _, _) => Some(("src/arch/powerpc32.s", true)),
+        ("powerpc64", _, _, "musl") => Some(("src/arch/powerpc64_openpower.s", true)),
         ("powerpc64", "little", _, _) => Some(("src/arch/powerpc64_openpower.s", true)),
         ("powerpc64", _, _, _) => Some(("src/arch/powerpc64.s", true)),
         ("s390x", _, _, _) => Some(("src/arch/zseries_linux.s", true)),
@@ -50,6 +51,7 @@ fn find_assembly(
         ("riscv64", _, _, _) => Some(("src/arch/riscv64.s", true)),
         ("wasm32", _, _, _) => Some(("src/arch/wasm32.o", true)),
         ("e2k64", _, _, _) => Some(("src/arch/e2k64.S", false)),
+        ("loongarch64", _, _, _) => Some(("src/arch/loongarch64.s", true)),
         _ => None,
     }
 }
