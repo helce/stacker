@@ -7,6 +7,7 @@ use std::thread;
 fn __stacker_black_box(_: *const u8) {}
 
 #[test]
+#[cfg_attr(target_arch = "e2k", ignore)]
 fn deep() {
     fn foo(n: usize, s: &mut [u8]) {
         __stacker_black_box(s.as_ptr());
@@ -30,7 +31,7 @@ fn deep() {
 }
 
 #[test]
-#[cfg_attr(target_arch = "wasm32", ignore)]
+#[cfg_attr(any(target_arch = "wasm32", target_arch = "e2k"), ignore)]
 fn panic() {
     fn foo(n: usize, s: &mut [u8]) {
         __stacker_black_box(s.as_ptr());
