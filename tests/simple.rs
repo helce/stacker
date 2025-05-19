@@ -18,7 +18,6 @@ fn recurse(n: usize) {
 }
 
 #[test]
-#[cfg_attr(target_arch = "e2k", ignore)]
 fn foo() {
     let limit = if cfg!(target_arch = "wasm32") {
         2000

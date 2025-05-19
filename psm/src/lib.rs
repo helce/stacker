@@ -63,14 +63,14 @@ extern_item! { {
     #[cfg(asm)]
     fn rust_psm_stack_pointer() -> *mut u8;
 
-    #[cfg(all(switchable_stack, not(target_os = "windows")))]
+    #[cfg(all(switchable_stack, not(target_os = "windows"), not(target_arch = "e2k")))]
     #[link_name="rust_psm_replace_stack"]
     fn _rust_psm_replace_stack(
         data: usize,
         callback: extern_item!(unsafe fn(usize) -> !),
         sp: *mut u8
     ) -> !;
-    #[cfg(all(switchable_stack, not(target_os = "windows")))]
+    #[cfg(all(switchable_stack, not(target_os = "windows"), not(target_arch = "e2k")))]
     #[link_name="rust_psm_on_stack"]
     fn _rust_psm_on_stack(
         data: usize,
@@ -95,7 +95,7 @@ extern_item! { {
     );
 } }
 
-#[cfg(all(switchable_stack, not(target_os = "windows")))]
+#[cfg(all(switchable_stack, not(target_os = "windows"), not(target_arch = "e2k")))]
 #[inline(always)]
 unsafe fn rust_psm_replace_stack(
     data: usize,
@@ -106,7 +106,7 @@ unsafe fn rust_psm_replace_stack(
     _rust_psm_replace_stack(data, callback, sp)
 }
 
-#[cfg(all(switchable_stack, not(target_os = "windows")))]
+#[cfg(all(switchable_stack, not(target_os = "windows"), not(target_arch = "e2k")))]
 #[inline(always)]
 unsafe fn rust_psm_on_stack(
     data: usize,
@@ -117,6 +117,11 @@ unsafe fn rust_psm_on_stack(
 ) {
     _rust_psm_on_stack(data, return_ptr, callback, sp)
 }
+
+#[cfg(target_arch = "e2k")]
+pub mod e2k;
+#[cfg(target_arch = "e2k")]
+use e2k::{rust_psm_on_stack, rust_psm_replace_stack};
 
 /// Run the closure on the provided stack.
 ///

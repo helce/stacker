@@ -14,3 +14,6 @@ readme = "README.mkd"
 
 [build-dependencies]
 cc = "1.0.2"
+
+[target.'cfg(target_arch = "e2k")'.dependencies]
+libc = "0.2.161"
