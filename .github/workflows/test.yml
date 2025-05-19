@@ -3,12 +3,13 @@ name: Test
 on:
   push:
     branches:
-    - master
+      - master
     paths-ignore:
-    - '*.mkd'
-    - 'LICENSE'
+      - "*.mkd"
+      - "LICENSE"
   pull_request:
     types: [opened, reopened, synchronize]
+  workflow_dispatch:
 
 jobs:
   native-test:
@@ -19,8 +20,8 @@ jobs:
       matrix:
         rust_toolchain: [nightly, stable, 1.63.0]
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        mode: ['--release', '-Zminimal-versions', '']
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        mode: ["--release", "-Zminimal-versions", ""]
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
         exclude:
           - rust_toolchain: stable
             mode: -Zminimal-versions
@@ -32,9 +33,9 @@ jobs:
       - name: Install Rust ${{ matrix.rust_toolchain }}
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: ${{ matrix.rust_toolchain }}
-            profile: minimal
-            default: true
+          toolchain: ${{ matrix.rust_toolchain }}
+          profile: minimal
+          default: true
       - name: Test ${{ matrix.manifest}} with ${{ matrix.mode }}
         uses: actions-rs/cargo@v1
         with:
@@ -52,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
         rust_target:
           - x86_64-pc-windows-msvc
           - i686-pc-windows-msvc
@@ -71,10 +72,10 @@ jobs:
           install: ${{ matrix.package }}
       - uses: actions-rs/toolchain@v1
         with:
-            toolchain: stable
-            profile: minimal
-            default: true
-            target: ${{ matrix.rust_target }}
+          toolchain: stable
+          profile: minimal
+          default: true
+          target: ${{ matrix.rust_target }}
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -92,7 +93,7 @@ jobs:
         rust_target:
           - x86_64-pc-windows-gnu
           - i686-pc-windows-gnu
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
         include:
           - rust_target: x86_64-pc-windows-gnu
             mingw_path: C:/msys64/mingw64/bin
@@ -111,13 +112,49 @@ jobs:
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: ${{ matrix.rust_toolchain }}
-            profile: minimal
-            target: ${{ matrix.rust_target }}
-            default: true
+          toolchain: ${{ matrix.rust_toolchain }}
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+          default: true
       - uses: actions-rs/cargo@v1
         with:
           command: test
+          args: --target ${{ matrix.rust_target }} --manifest-path=${{ matrix.manifest }}
+
+  cross-windows-gnullvm-check:
+    name: Check ${{ matrix.manifest }} to ${{ matrix.rust_target }} with stable
+    runs-on: ubuntu-latest
+    env:
+      LLVM_MINGW_VERSION: "20241030"
+    strategy:
+      fail-fast: false
+      matrix:
+        rust_target:
+          - aarch64-pc-windows-gnullvm
+          - i686-pc-windows-gnullvm
+          - x86_64-pc-windows-gnullvm
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: llvm-mingw-version
+          key: ${{ env.LLVM_MINGW_VERSION }}
+      - name: Install llvm-mingw
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${{ env.LLVM_MINGW_VERSION }}/llvm-mingw-${{ env.LLVM_MINGW_VERSION }}-ucrt-ubuntu-20.04-x86_64.tar.xz | tar xJf -
+      - name: Add llvm-mingw to PATH
+        run: echo "${{ github.workspace }}/llvm-mingw-${{ env.LLVM_MINGW_VERSION }}-ucrt-ubuntu-20.04-x86_64/bin" >> $GITHUB_PATH
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+      - name: Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
           args: --target ${{ matrix.rust_target }} --manifest-path=${{ matrix.manifest }}
 
   cross-linux-test:
@@ -134,6 +171,7 @@ jobs:
           - aarch64-unknown-linux-gnu
           - arm-unknown-linux-gnueabi
           - armv7-unknown-linux-gnueabihf
+          - loongarch64-unknown-linux-gnu
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
           # No libstd available :(
@@ -145,24 +183,24 @@ jobs:
           # https://github.com/rust-embedded/cross/pull/440
           # - powerpc64-unknown-linux-gnu
           - x86_64-unknown-linux-musl
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
-        mode: ['--release', '-Zminimal-versions', '']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
+        mode: ["--release", "-Zminimal-versions", ""]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
-            profile: minimal
-            target: ${{ matrix.rust_target }}
-            default: true
+          toolchain: nightly
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+          default: true
+      - name: Install cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
       - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: test
-          args: --target ${{ matrix.rust_target }} --manifest-path=${{ matrix.manifest }}  ${{ matrix.mode }} -- --test-threads=1 --nocapture
+        run: |
+          cross test --target ${{ matrix.rust_target }} --manifest-path=${{ matrix.manifest }}  ${{ matrix.mode }} -- --test-threads=1 --nocapture
 
   native-build:
     name: Build ${{ matrix.manifest }} to ${{ matrix.rust_target }} on nightly
@@ -174,17 +212,17 @@ jobs:
           # BSDs: could be tested with full system emulation
           - i686-unknown-freebsd
           - x86_64-unknown-freebsd
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
-            profile: minimal
-            target: ${{ matrix.rust_target }}
-            default: true
+          toolchain: nightly
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+          default: true
       - name: Build ${{ matrix.rust_target }}
         uses: actions-rs/cargo@v1
         with:
@@ -213,17 +251,17 @@ jobs:
           # - sparc64-unknown-linux-gnu
           # BSDs: could be tested with full system emulation
           - x86_64-unknown-netbsd
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust nightly
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
-            profile: minimal
-            target: ${{ matrix.rust_target }}
-            default: true
+          toolchain: nightly
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+          default: true
       - name: Build ${{ matrix.rust_target }}
         uses: actions-rs/cargo@v1
         with:
@@ -241,17 +279,17 @@ jobs:
         rust_target:
           - aarch64-apple-ios
           - x86_64-apple-ios
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v2
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: ${{ matrix.rust_toolchain }}
-            profile: minimal
-            target: ${{ matrix.rust_target }}
-            default: true
+          toolchain: ${{ matrix.rust_toolchain }}
+          profile: minimal
+          target: ${{ matrix.rust_target }}
+          default: true
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -267,7 +305,7 @@ jobs:
         rust_target:
           - x86_64-pc-windows-msvc
           - i686-pc-windows-msvc
-        manifest: ['psm/Cargo.toml', 'Cargo.toml']
+        manifest: ["psm/Cargo.toml", "Cargo.toml"]
         xwin_version: ["0.1.6"]
     timeout-minutes: 10
     steps:
@@ -321,11 +359,11 @@ jobs:
       - name: Install Rust nightly
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
-            default: true
-            target: wasm32-wasi
+          toolchain: nightly
+          default: true
+          target: wasm32-wasip1
       - run: |
           curl -Lf https://github.com/bytecodealliance/wasmtime/releases/download/v24.0.0/wasmtime-v24.0.0-x86_64-linux.tar.xz | tar xJf - -C ${{ runner.tool_cache }}
           echo "${{ runner.tool_cache }}/wasmtime-v24.0.0-x86_64-linux" >> $GITHUB_PATH
-          echo "CARGO_TARGET_WASM32_WASI_RUNNER=wasmtime run --" >> $GITHUB_ENV
-      - run: cargo test --target wasm32-wasi --all -- --nocapture
+          echo "CARGO_TARGET_WASM32_WASIP1_RUNNER=wasmtime run --" >> $GITHUB_ENV
+      - run: cargo test --target wasm32-wasip1 --all -- --nocapture
